@@ -2,23 +2,6 @@ defmodule Sync.Repo.Migrations.CreateItems do
   use Ecto.Migration
 
   def change do
-    # TODO: Encapsulate this into Phoenix.Sync.Migrations.install()
-    # TODO: We should consider using shared advisory locks to reduce
-    # the "scope" of long running transactions
-    execute """
-            CREATE OR REPLACE FUNCTION phx_sync_snap_columns()
-            RETURNS TRIGGER AS $$
-            BEGIN
-                NEW._snapcur := pg_current_xact_id();
-                NEW._snapmin := pg_snapshot_xmin(pg_current_snapshot());
-                RETURN NEW;
-            END;
-            $$ LANGUAGE plpgsql;
-            """,
-            """
-            DROP FUNCTION phx_sync_snap_columns();
-            """
-
     # TODO: We need to either introduce sync_create or sync_table
     # that will add the relevant tables and triggers
     #
@@ -45,5 +28,8 @@ defmodule Sync.Repo.Migrations.CreateItems do
             """
             DROP TRIGGER phx_sync_snap_before_insert_update ON items;
             """
+
+    execute "ALTER PUBLICATION phx_sync ADD TABLE items",
+            "ALTER PUBLICATION phx_sync DROP TABLE items"
   end
 end
