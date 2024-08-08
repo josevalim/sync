@@ -4,7 +4,7 @@ A proof of concept of an Elixir/Phoenix node that runs PostgreSQL Replication to
 
 ## Setup
 
-This project builds on top of PostgreSQL replication and you must configure your PostgreSQL instance to do the same:
+This project builds on top of PostgreSQL replication and it requires PostgreSQL 14+. You must also enable replication in your PostgreSQL instance:
 
 ```sql
 ALTER SYSTEM SET wal_level='logical';
