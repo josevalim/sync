@@ -4,6 +4,9 @@ defmodule SyncWeb.Channel do
   alias Sync.Repo
   import Ecto.Query
 
+  # TODO: Implement {Sync.Replication, %{message: :connect}}
+  # event by asking the client to synchronize again.
+
   @impl true
   def join("todo:sync", _payload, socket) do
     {:ok, assign(socket, :subscriptions, MapSet.new())}

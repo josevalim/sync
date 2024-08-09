@@ -137,6 +137,10 @@ defmodule Sync.Replication do
     {:stream, query, [], %{state | replication: :connected}}
   end
 
+  def handle_result(%Postgrex.Error{} = error, _state) do
+    raise Exception.message(error)
+  end
+
   @impl true
   # https://www.postgresql.org/docs/14/protocol-replication.html
   def handle_data(<<?w, _wal_start::64, _wal_end::64, _clock::64, rest::binary>>, state) do
