@@ -11,6 +11,10 @@ defmodule SyncWeb.Endpoint do
     same_site: "Lax"
   ]
 
+  socket "/socket", SyncWeb.Socket,
+    websocket: true,
+    longpoll: true
+
   socket "/live", Phoenix.LiveView.Socket,
     websocket: [connect_info: [session: @session_options]],
     longpoll: [connect_info: [session: @session_options]]

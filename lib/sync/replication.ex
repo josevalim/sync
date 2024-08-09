@@ -108,7 +108,11 @@ defmodule Sync.Replication do
 
   defp handle_commit(lsn, state) do
     # TODO: Encode this as binary data
-    # TODO: Send only relevant fields (snapcur does not need to be sent)
+    # TODO: Potentially allow synchronized fields to be filtered
+    # TODO: lsn can cause an overflow on the client, since JS integers are floats
+    # TODO: Broadcast will encode to JSON when fast-lining,
+    # this can be expensive if done directly in the replication process.
+    # We can probably partition this over several processes
     state.endpoint.broadcast!("todo:items", "commit", %{
       lsn: lsn,
       ops: Enum.reverse(state.transaction)

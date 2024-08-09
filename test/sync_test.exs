@@ -1,4 +1,4 @@
-defmodule Sync.TodoTest do
+defmodule SyncTest do
   # We don't use Sync.DataCase because want to automatically manage connections.
   use ExUnit.Case
 

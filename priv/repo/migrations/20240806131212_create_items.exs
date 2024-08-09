@@ -3,7 +3,8 @@ defmodule Sync.Repo.Migrations.CreateItems do
 
   def change do
     # TODO: We need to either introduce sync_create or sync_table
-    # that will add the relevant tables and triggers
+    # that will add the relevant tables and triggers. Or a syncify
+    # function that is idempotent over a table.
     #
     # TODO: We also need to add soft deletion. Perhaps with views
     # and also a mechanism to scrape data on deletion. More info at:
