@@ -12,8 +12,11 @@ defmodule Sync.Application do
       Sync.Repo,
       {DNSCluster, query: Application.get_env(:sync, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Sync.PubSub},
+      # Sync specific services
+      {Registry, name: Sync.Registry, keys: :duplicate},
       {Sync.Replication,
        [name: Sync.Replication, endpoint: SyncWeb.Endpoint] ++ Sync.Repo.config()},
+      {Task, fn -> Sync.Replication.wait_for_connection!(Sync.Replication) end},
       # Start the Finch HTTP client for sending emails
       {Finch, name: Sync.Finch},
       # Start a worker by calling: Sync.Worker.start_link(arg)

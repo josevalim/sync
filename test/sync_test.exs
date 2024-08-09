@@ -53,13 +53,14 @@ defmodule SyncTest do
       updated_item = Repo.update!(change(item, name: "study harder!"))
       assert item._snapmin != updated_item._snapmin
       assert item._snapcur != updated_item._snapcur
+    end
+  end
 
-      # Add pg_lsn type to Postgrex
-      # %{rows: [[lsn]]} = Repo.query!("SELECT pg_current_wal_lsn()::text")
-      # [high_hex, low_hex] = :binary.split(lsn, "/")
-      # high_int = String.to_integer(high_hex, 16)
-      # low_int = String.to_integer(low_hex, 16)
-      # IO.inspect(Bitwise.bsl(high_int, 32) + low_int)
+  describe "replication" do
+    test "sends a message on reconnection" do
+      Sync.Replication.subscribe(Sync.Replication)
+      Sync.Replication.disconnect(Sync.Replication)
+      assert_receive {Sync.Replication, %{message: :connect}}
     end
 
     test "broadcasts insertions and updates" do
