@@ -10,6 +10,7 @@ defmodule Sync.Todo.Item do
     field :done, :boolean, default: false
 
     # TODO: Use writeable: :never on Ecto v3.12+
+    field :_deleted_at, :utc_datetime, read_after_writes: true
     field :_snapmin, :integer, read_after_writes: true
     field :_snapcur, :integer, read_after_writes: true
 

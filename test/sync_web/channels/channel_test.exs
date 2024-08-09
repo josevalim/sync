@@ -25,4 +25,15 @@ defmodule SyncWeb.ChannelChannelTest do
     assert_reply ref, :ok, %{data: [], lsn: lsn, snapmin: snapmin}
     assert is_integer(lsn) and is_integer(snapmin)
   end
+
+  test "sync does not fetch soft-deleted data", %{socket: socket} do
+    Sync.Repo.insert!(%Sync.Todo.Item{
+      name: "study",
+      _deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)
+    })
+
+    ref = push(socket, "sync", %{"snapmin" => "0"})
+    assert_reply ref, :ok, %{data: [], lsn: lsn, snapmin: snapmin}
+    assert is_integer(lsn) and is_integer(snapmin)
+  end
 end

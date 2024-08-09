@@ -52,7 +52,9 @@ defmodule SyncWeb.Channel do
         data =
           Repo.all(
             from s in Sync.Todo.Item,
-              where: s._snapmin >= ^client_snapmin and s._snapmin < ^server_snapmin
+              where:
+                s._snapmin >= ^client_snapmin and s._snapmin < ^server_snapmin and
+                  is_nil(s._deleted_at)
           )
 
         %{rows: [[lsn]]} = Repo.query!("SELECT pg_current_wal_lsn()::text")
@@ -63,6 +65,19 @@ defmodule SyncWeb.Channel do
     {:reply, {:ok, payload}, socket}
   end
 
+  # For writes, the client has two storages: the sync storage and
+  # the transaction storage. The sync storage only has the data
+  # received through sync and replication layer. Whenever the client
+  # wants to change data, it goes to the replication store first.
+  # The in-memory data is the result of applying all transactions
+  # in the transaction storage to the sync storage. Whenever we
+  # receive a replication event, we discard the in-memory data,
+  # update the sync storage, and apply the transactions on top.
+  # Of course, there are several ways to optimize this as to not
+  # recompute all data all over again all the time.
+  #
+  # TODO: IndexedDB is shared across tabs. It is necessary to
+  # provide some mechanism to enable cross tab support.
   @impl true
   def handle_in("write", payload, socket) do
     {:reply, {:ok, payload}, socket}
