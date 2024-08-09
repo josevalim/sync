@@ -3,7 +3,7 @@ import {Socket} from "phoenix"
 let socket = new Socket("/socket")
 socket.connect()
 
-let channel = socket.channel("todo:items", {})
+let channel = socket.channel("todo:sync", {})
 
 channel.join()
   .receive("ok", resp => { console.log("Joined successfully", resp) })

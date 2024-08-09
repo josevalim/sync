@@ -204,13 +204,17 @@ defmodule Sync.Replication do
   end
 
   defp handle_commit(lsn, state) do
-    # TODO: Encode this as binary data
-    # TODO: Potentially allow synchronized fields to be filtered
-    # TODO: lsn can cause an overflow on the client, since JS integers are floats
-    # TODO: Broadcast will encode to JSON when fast-lining,
-    # this can be expensive if done directly in the replication process.
-    # We can probably partition this over several processes
-    state.endpoint.broadcast!("todo:items", "commit", %{
+    # TODO: Encode this as binary data.
+    # TODO: Potentially allow synchronizing a subset of the fields.
+    # TODO: lsn can cause an overflow on the client, since JS integers are floats.
+    # TODO: Broadcast will encode to JSON when fastlaning,
+    #       this can be expensive if done directly in the replication process.
+    #       We can probably partition this over several processes.
+    # TODO: The broadcast should be per table and a commit can touch several
+    #       tables. We need an efficient mechanism to filter these down and
+    #       send to the client. Perhaps by using a custom Registry rather than
+    #       PubSub, since it is all local anyway.
+    state.endpoint.local_broadcast("todo:items", "commit", %{
       lsn: lsn,
       ops: Enum.reverse(state.replication)
     })

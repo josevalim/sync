@@ -2,7 +2,7 @@ defmodule SyncWeb.Channel do
   use SyncWeb, :channel
 
   @impl true
-  def join("todo:items", _payload, socket) do
+  def join("todo:sync", _payload, socket) do
     {:ok, socket}
   end
 

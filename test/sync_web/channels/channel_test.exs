@@ -4,7 +4,7 @@ defmodule SyncWeb.ChannelChannelTest do
   setup do
     {:ok, _, socket} =
       socket(SyncWeb.Socket)
-      |> subscribe_and_join(SyncWeb.Channel, "todo:items")
+      |> subscribe_and_join(SyncWeb.Channel, "todo:sync")
 
     %{socket: socket}
   end
