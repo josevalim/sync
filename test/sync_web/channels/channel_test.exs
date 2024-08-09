@@ -1,6 +1,8 @@
 defmodule SyncWeb.ChannelChannelTest do
   use SyncWeb.ChannelCase
 
+  @moduletag cleanup: ["items"]
+
   setup do
     {:ok, _, socket} =
       socket(SyncWeb.Socket)
@@ -9,18 +11,18 @@ defmodule SyncWeb.ChannelChannelTest do
     %{socket: socket}
   end
 
-  test "ping replies with status ok", %{socket: socket} do
-    ref = push(socket, "ping", %{"hello" => "there"})
-    assert_reply ref, :ok, %{"hello" => "there"}
-  end
+  test "sync receives latest data", %{socket: socket} do
+    ref = push(socket, "sync", %{"snapmin" => "0"})
+    assert_reply ref, :ok, %{data: [], lsn: lsn, snapmin: snapmin}
+    assert is_integer(lsn) and is_integer(snapmin)
 
-  test "shout broadcasts to channel:lobby", %{socket: socket} do
-    push(socket, "shout", %{"hello" => "all"})
-    assert_broadcast "shout", %{"hello" => "all"}
-  end
+    %{id: id} = Sync.Repo.insert!(%Sync.Todo.Item{name: "study"})
+    ref = push(socket, "sync", %{"snapmin" => "0"})
+    assert_reply ref, :ok, %{data: [%Sync.Todo.Item{id: ^id}], lsn: lsn, snapmin: snapmin}
+    assert is_integer(lsn) and is_integer(snapmin)
 
-  test "broadcasts are pushed to the client", %{socket: socket} do
-    broadcast_from!(socket, "broadcast", %{"some" => "data"})
-    assert_push "broadcast", %{"some" => "data"}
+    ref = push(socket, "sync", %{"snapmin" => snapmin})
+    assert_reply ref, :ok, %{data: [], lsn: lsn, snapmin: snapmin}
+    assert is_integer(lsn) and is_integer(snapmin)
   end
 end

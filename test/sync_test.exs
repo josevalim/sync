@@ -1,17 +1,9 @@
 defmodule SyncTest do
   # We don't use Sync.DataCase because want to automatically manage connections.
-  use ExUnit.Case
-
-  alias Sync.Repo
+  use Sync.DataCase
   alias Sync.Todo.Item
 
-  import Ecto.Changeset
-
-  setup do
-    Ecto.Adapters.SQL.Sandbox.checkout(Repo, sandbox: false)
-    Repo.delete_all("items")
-    :ok
-  end
+  @moduletag cleanup: ["items"]
 
   describe "items" do
     test "sets _snapmin and _snapcur on insertion" do
