@@ -131,8 +131,8 @@ defmodule Sync.Replication do
       <<?b, _rest::binary>> ->
         raise "binary values not supported by sync"
 
-      <<?u, _rest::binary>> ->
-        raise "TOASTed values not supported by sync"
+      <<?u, rest::binary>> ->
+        parse_tuple_data(count - 1, columns, rest)
     end
   end
 

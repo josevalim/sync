@@ -95,5 +95,40 @@ defmodule Sync.TodoTest do
                      }
                      when is_integer(lsn)
     end
+
+    test "broadcasts with TOAST" do
+      SyncWeb.Endpoint.subscribe("todo:items")
+      name = String.duplicate("a", 1_000_000)
+
+      {:ok, id} =
+        Repo.transaction(fn ->
+          item = Repo.insert!(%Item{name: name})
+          item = Repo.update!(change(item, done: true))
+          item.id
+        end)
+
+      assert_receive %Phoenix.Socket.Broadcast{
+                       topic: "todo:items",
+                       event: "commit",
+                       payload: %{
+                         ops: [
+                           %{
+                             op: :insert,
+                             table: "items",
+                             schema: "public",
+                             data: %{"id" => ^id, "name" => ^name}
+                           },
+                           %{
+                             op: :update,
+                             table: "items",
+                             schema: "public",
+                             data: %{"id" => ^id}
+                           }
+                         ],
+                         lsn: lsn
+                       }
+                     }
+                     when is_integer(lsn)
+    end
   end
 end

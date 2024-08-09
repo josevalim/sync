@@ -9,7 +9,7 @@ defmodule Sync.Repo.Migrations.CreateItems do
     # and also a mechanism to scrape data on deletion. More info at:
     # https://evilmartians.com/chronicles/soft-deletion-with-postgresql-but-with-logic-on-the-database
     create table(:items, primary_key: [type: :binary_id]) do
-      add :name, :string
+      add :name, :text
       add :done, :boolean, default: false, null: false
 
       add :_deleted_at, :utc_datetime
