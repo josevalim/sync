@@ -72,8 +72,6 @@ defmodule Sync.TodoTest do
           item.id
         end)
 
-      id = Integer.to_string(id)
-
       assert_receive %Phoenix.Socket.Broadcast{
                        topic: "todo:items",
                        event: "commit",

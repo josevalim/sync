@@ -107,7 +107,8 @@ defmodule Sync.Replication do
   end
 
   defp handle_commit(lsn, state) do
-    # TODO: Encode this as binary data. Send only relevant fields.
+    # TODO: Encode this as binary data
+    # TODO: Send only relevant fields (snapcur does not need to be sent)
     state.endpoint.broadcast!("todo:items", "commit", %{
       lsn: lsn,
       ops: Enum.reverse(state.transaction)

@@ -8,7 +8,7 @@ defmodule Sync.Repo.Migrations.CreateItems do
     # TODO: We also need to add soft deletion. Perhaps with views
     # and also a mechanism to scrape data on deletion. More info at:
     # https://evilmartians.com/chronicles/soft-deletion-with-postgresql-but-with-logic-on-the-database
-    create table(:items) do
+    create table(:items, primary_key: [type: :binary_id]) do
       add :name, :string
       add :done, :boolean, default: false, null: false
 
