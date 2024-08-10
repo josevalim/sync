@@ -1,0 +1,24 @@
+{
+  "name": "svelte-todo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build --minify false --outDir=../priv/static/assets --manifest manifest.json --emptyOutDir --assetsDir .",
+    "watch": "vite build --minify false --watch --outDir=../priv/static/assets --manifest manifest.json --emptyOutDir --assetsDir .",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^3.1.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.41",
+    "svelte": "^4.2.18",
+    "tailwindcss": "^3.4.9",
+    "vite": "^5.4.0"
+  },
+  "dependencies": {
+    "@tailwindcss/forms": "^0.5.7",
+    "phoenix": "^1.7.14"
+  }
+}

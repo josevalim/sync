@@ -19,6 +19,36 @@ defmodule SyncWeb do
 
   def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
 
+  # TODO vite suffixes the bundles for cache busting, so we need to
+  # read the manifest and cache the lookup. A proper approach would
+  # be to cache this into an ETS lookup in the same way the phoenix
+  # manifest is cached.
+  #
+  # We need to run the build to ensure it exists before we read it
+  System.cmd("npm", ["run", "build"], cd: "assets")
+  @manifest_path "priv/static/assets/manifest.json"
+  @external_resource @manifest_path
+  @manifest Jason.decode!(File.read!(@manifest_path))
+  @index_js_paths @manifest
+                  |> Map.fetch!("index.html")
+                  |> Map.fetch!("file")
+                  |> List.wrap()
+                  |> Enum.map(&"/assets/#{&1}")
+
+  @index_css_paths @manifest
+                   |> Map.fetch!("index.html")
+                   |> Map.fetch!("css")
+                   |> List.wrap()
+                   |> Enum.map(&"/assets/#{&1}")
+
+  def index_js_paths do
+    @index_js_paths
+  end
+
+  def index_css_paths do
+    @index_css_paths
+  end
+
   def router do
     quote do
       use Phoenix.Router, helpers: false

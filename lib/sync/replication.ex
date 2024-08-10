@@ -218,7 +218,7 @@ defmodule Sync.Replication do
     #       tables. We need an efficient mechanism to filter these down and
     #       send to the client. Perhaps by using a custom Registry rather than
     #       PubSub, since it is all local anyway.
-    state.endpoint.local_broadcast("todo:items", "commit", %{
+    state.endpoint.local_broadcast("sync:todos:items", "commit", %{
       lsn: lsn,
       ops: Enum.reverse(state.replication)
     })
