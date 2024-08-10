@@ -1,29 +1,13 @@
 <script>
   import { onMount } from "svelte";
   import SyncDB from "./lib/sync_db";
+  import { todos } from "./lib/todos_store";
+  import uuidv4 from "./lib/uuidv4";
   import { applyDarkMode, enableDarkMode, disableDarkMode } from "./lib/utils";
 
-  let todos = []
-  let todoStore = {
-    add(todos, todo){ return [...todos, todo]; },
-
-    update(todos, id, callback){
-      let foundTodo;
-      todos = todos.map(todo => {
-        if(todo.id === id){
-          foundTodo = callback(todo);
-          return foundTodo;
-        } else {
-          return todo
-        }
-      });
-      return [todos, foundTodo];
-    },
-
-    delete(todos, id){
-      return todos.filter(item => item.id !== id);
-    }
-  };
+  $: sortedTodos = [...$todos.items].sort((a, b) => {
+    return new Date(a.inserted_at) - new Date(b.inserted_at);
+  });
 
   let newTodo = "";
   let isDarkMode = applyDarkMode();
@@ -31,29 +15,35 @@
     .querySelector("meta[name='csrf-token']")
     .getAttribute("content");
 
-  let db = new SyncDB(1, ["items"], {csrfToken});
+  let db = new SyncDB(1, ["items"], { csrfToken });
 
-
-  document.addEventListener("items:inserted", ({detail}) => {
-    todos = todoStore.add(todos, detail);
+  document.addEventListener("items:inserted", ({ detail }) => {
+    todos.add(detail);
   });
-  document.addEventListener("items:updated", ({detail}) => {
-    [todos, ] = todoStore.update(todos, detail.id, () => detail);
+  document.addEventListener("items:updated", ({ detail }) => {
+    todos.update(detail.id, () => detail);
   });
-  document.addEventListener("items:updated", ({detail}) => {
-    todos = todoStore.delete(todos, detail)
+  document.addEventListener("items:updated", ({ detail }) => {
+    todos.delete(detail);
   });
 
   onMount(async () => {
     await db.sync();
-    todos = await db.all("items");
+    let items = await db.all("items");
+    items.forEach((item) => todos.add(item));
   });
 
   let addTodo = async () => {
     if (newTodo.trim() !== "") {
-      let todo = { id: Date.now(), name: newTodo, completed: false };
+      let now = new Date()
+      let todo = {
+        id: uuidv4(),
+        name: newTodo,
+        done: false,
+        inserted_at: now.toISOString()
+      };
       await db.insert("items", todo);
-      todoStore.add(todos, todo);
+      todos.add(todo);
       newTodo = "";
     }
   };
@@ -64,15 +54,14 @@
   };
 
   let toggleTodoCompletion = async (id) => {
-    let updatedTodo
-    [todos, updatedTodo] = todoStore.update(todos, id, todo => {
-      return {...todo, completed: !todo.completed};
+    let updatedTodo = todos.update(id, (todo) => {
+      return { ...todo, done: !todo.done };
     });
     await db.update("items", updatedTodo);
   };
 
   let deleteTodo = async (id) => {
-    todos = todoStore.delete(todos, id);
+    todos.delete(id);
     await db.delete("items", id);
   };
 
@@ -151,17 +140,17 @@
     </form>
 
     <ul>
-      {#each todos as todo (todo.id)}
+      {#each sortedTodos as todo (todo.id)}
         <li
           class={`flex items-center justify-between p-2 rounded-md mb-2 ${isDarkMode ? "bg-gray-700 text-white" : "bg-gray-100 text-zinc-900"}`}
         >
-          <span class={todo.completed ? "line-through opacity-50" : ""}>
+          <span class={todo.done ? "line-through opacity-50" : ""}>
             {todo.name}
           </span>
           <div class="flex space-x-2">
             <button
               on:click={() => toggleTodoCompletion(todo.id)}
-              class={todo.completed
+              class={todo.done
                 ? `text-green-500 hover:text-green-400`
                 : `text-gray-500 hover:text-gray-400`}
             >
