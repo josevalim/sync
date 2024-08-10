@@ -61,12 +61,12 @@ defmodule Sync.MixProject do
   # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
-      setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
+      setup: ["deps.get", "assets.setup", "ecto.setup", "assets.build"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["tailwind sync", "esbuild sync"],
+      "assets.setup": ["cmd --cd assets npm install", "assets.build"],
+      "assets.build": ["cmd --cd assets npm run build"],
       "assets.deploy": [
         "tailwind sync --minify",
         "esbuild sync --minify",
