@@ -5,7 +5,7 @@ defmodule Sync.Todo.Item do
   # TODO: Introduce sync_schema that will define the snapshot columns and the scope
   # TODO: Figure out schema evolution
   @primary_key {:id, :binary_id, autogenerate: true}
-  @derive {Jason.Encoder, only: [:name, :done, :_snapmin, :_snapcur, :inserted_at, :updated_at]}
+  @derive {Jason.Encoder, only: [:id, :name, :done, :_snapmin, :_snapcur, :inserted_at, :updated_at]}
   schema "items" do
     field :name, :string
     field :done, :boolean, default: false
@@ -14,7 +14,7 @@ defmodule Sync.Todo.Item do
     field :_snapmin, :integer, read_after_writes: true
     field :_snapcur, :integer, read_after_writes: true
 
-    timestamps(type: :utc_datetime)
+    timestamps(type: :utc_datetime_usec)
   end
 
   @doc false

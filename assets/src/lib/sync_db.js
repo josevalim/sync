@@ -14,15 +14,13 @@ export default class {
   }
 
   handleCommit({ lsn, ops }) {
+    console.log("commit", lsn, ops)
     ops.forEach(({ op, data, schema, table }) => {
       if (op === "insert") {
-        console.log("insert", lsn, ops)
         this.insert(table, data)
       } else if (op === "update") {
-        console.log("update", lsn, ops)
         this.update(table, data)
       } else if (op === "delete") {
-        console.log("delete", lsn, ops)
         this.delete(table, data.id)
       }
     })
@@ -43,6 +41,9 @@ export default class {
       .receive("ok", (resp) => {
         this.channel.push("sync", { snapmin: 0 }).receive("ok", ({ data, lsn, snapmin }) => {
           console.log("sync", { data, lsn, snapmin });
+          data.forEach(([table, rows]) => {
+            rows.forEach(row => this.insert(table, row));
+          });
           this.lsn = lsn
           this.snapmin = snapmin
           resolve();
@@ -93,9 +94,9 @@ export default class {
     return new Promise((resolve, reject) => {
       let transaction = this.db.transaction([table], "readwrite");
       let objectStore = transaction.objectStore(table);
-      let request = objectStore.add(record);
+      let request = objectStore.put(record);
 
-      request.onerror = (e) => reject(`Error inserted into ${table}`);
+      request.onerror = (e) => reject(`Error inserting into ${table}` + e.target.error);
       request.onsuccess = (e) => {
         document.dispatchEvent(new CustomEvent(`${table}:inserted`, { detail: record }));
         resolve(e.target.result);

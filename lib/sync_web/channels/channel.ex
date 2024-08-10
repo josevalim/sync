@@ -57,7 +57,7 @@ defmodule SyncWeb.Channel do
 
         %{rows: [[lsn]]} = Repo.query!("SELECT pg_current_wal_lsn()::text")
         {:ok, lsn} = Postgrex.ReplicationConnection.decode_lsn(lsn)
-        %{snapmin: server_snapmin, data: data, lsn: lsn}
+        %{snapmin: server_snapmin, data: [["items", data]], lsn: lsn}
       end)
 
     {:reply, {:ok, payload}, socket}
