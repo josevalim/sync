@@ -64,7 +64,7 @@ defmodule SyncTest do
     end
 
     test "broadcasts insertions and updates" do
-      SyncWeb.Endpoint.subscribe("todo:items")
+      SyncWeb.Endpoint.subscribe("sync:todos:items")
 
       {:ok, id} =
         Repo.transaction(fn ->
@@ -74,7 +74,7 @@ defmodule SyncTest do
         end)
 
       assert_receive %Phoenix.Socket.Broadcast{
-                       topic: "todo:items",
+                       topic: "sync:todos:items",
                        event: "commit",
                        payload: %{
                          ops: [
@@ -98,7 +98,7 @@ defmodule SyncTest do
     end
 
     test "broadcasts with TOAST" do
-      SyncWeb.Endpoint.subscribe("todo:items")
+      SyncWeb.Endpoint.subscribe("sync:todos:items")
       name = String.duplicate("a", 1_000_000)
 
       {:ok, id} =
@@ -109,7 +109,7 @@ defmodule SyncTest do
         end)
 
       assert_receive %Phoenix.Socket.Broadcast{
-                       topic: "todo:items",
+                       topic: "sync:todos:items",
                        event: "commit",
                        payload: %{
                          ops: [

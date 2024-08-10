@@ -6,23 +6,29 @@ defmodule SyncWeb.ChannelChannelTest do
   setup do
     {:ok, _, socket} =
       socket(SyncWeb.Socket)
-      |> subscribe_and_join(SyncWeb.Channel, "todo:sync")
+      |> subscribe_and_join(SyncWeb.Channel, "sync:todos")
 
     %{socket: socket}
   end
 
   test "sync receives latest data", %{socket: socket} do
     ref = push(socket, "sync", %{"snapmin" => "0"})
-    assert_reply ref, :ok, %{data: [], lsn: lsn, snapmin: snapmin}
+    assert_reply ref, :ok, %{data: [["items", []]], lsn: lsn, snapmin: snapmin}
     assert is_integer(lsn) and is_integer(snapmin)
 
     %{id: id} = Sync.Repo.insert!(%Sync.Todo.Item{name: "study"})
     ref = push(socket, "sync", %{"snapmin" => "0"})
-    assert_reply ref, :ok, %{data: [%Sync.Todo.Item{id: ^id}], lsn: lsn, snapmin: snapmin}
+
+    assert_reply ref, :ok, %{
+      data: [["items", [%Sync.Todo.Item{id: ^id}]]],
+      lsn: lsn,
+      snapmin: snapmin
+    }
+
     assert is_integer(lsn) and is_integer(snapmin)
 
     ref = push(socket, "sync", %{"snapmin" => snapmin})
-    assert_reply ref, :ok, %{data: [], lsn: lsn, snapmin: snapmin}
+    assert_reply ref, :ok, %{data: [["items", []]], lsn: lsn, snapmin: snapmin}
     assert is_integer(lsn) and is_integer(snapmin)
   end
 
@@ -35,7 +41,7 @@ defmodule SyncWeb.ChannelChannelTest do
     ref = push(socket, "sync", %{"snapmin" => "0"})
 
     assert_reply ref, :ok, %{
-      data: [%Sync.Todo.Item{id: ^id, _deleted_at: %DateTime{}}],
+      data: [["items", [%Sync.Todo.Item{id: ^id, _deleted_at: %DateTime{}}]]],
       lsn: lsn,
       snapmin: snapmin
     }
