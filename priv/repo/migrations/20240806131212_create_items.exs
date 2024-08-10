@@ -2,13 +2,9 @@ defmodule Sync.Repo.Migrations.CreateItems do
   use Ecto.Migration
 
   def change do
-    # TODO: We need to either introduce sync_create or sync_table
-    # that will add the relevant tables and triggers. Or a syncify
-    # function that is idempotent over a table.
-    #
-    # TODO: We also need to add soft deletion. Perhaps with views
-    # and also a mechanism to scrape data on deletion. More info at:
-    # https://evilmartians.com/chronicles/soft-deletion-with-postgresql-but-with-logic-on-the-database
+    # TODO: We need to either introduce sync_create or a syncify
+    # function that wil add the relevant tables and triggers.
+    # If we go with syncify, we need to guarantee "idempotency".
     create table(:items, primary_key: [type: :binary_id]) do
       add :name, :text
       add :done, :boolean, default: false, null: false
@@ -21,13 +17,13 @@ defmodule Sync.Repo.Migrations.CreateItems do
     end
 
     execute """
-            CREATE TRIGGER phx_sync_snap_before_insert_update
+            CREATE OR REPLACE TRIGGER phx_sync_snap_before_insert_update
             BEFORE INSERT OR UPDATE ON items
             FOR EACH ROW
             EXECUTE FUNCTION phx_sync_snap_columns();
             """,
             """
-            DROP TRIGGER phx_sync_snap_before_insert_update ON items;
+            DROP TRIGGER IF EXISTS phx_sync_snap_before_insert_update ON items;
             """
 
     execute "ALTER PUBLICATION phx_sync ADD TABLE items",

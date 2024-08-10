@@ -3,7 +3,6 @@ defmodule Sync.Replication do
 
   require Logger
 
-  # TODO: We should explicitly subscribe and send a connect message every time we connect
   # TODO: Allow the publications to be passed as parameters
   def start_link(opts) do
     name = Keyword.get(opts, :name)
@@ -226,6 +225,8 @@ defmodule Sync.Replication do
     {:noreply, %{state | replication: :connected}}
   end
 
+  # TODO: if an entry has been soft-deleted, we could emit a special delete
+  # instruction instead of sending the whole update.
   defp parse_tuple_data(0, [], <<>>), do: []
 
   defp parse_tuple_data(count, [{name, _oid, _modifier} | columns], data) do

@@ -46,6 +46,14 @@ defmodule SyncTest do
       assert item._snapmin != updated_item._snapmin
       assert item._snapcur != updated_item._snapcur
     end
+
+    test "soft deletion" do
+      %{id: id} = item = Repo.insert!(%Item{name: "study"})
+      {:error, _changeset} = Sync.Repo.delete(item, stale_error_field: :id)
+
+      assert [] = Repo.all(Item)
+      assert [%{id: ^id}] = Repo.all({"items", Item})
+    end
   end
 
   describe "replication" do

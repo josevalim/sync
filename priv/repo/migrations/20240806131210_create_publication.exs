@@ -21,7 +21,7 @@ defmodule Sync.Repo.Migrations.CreatePublication do
             $$ LANGUAGE plpgsql;
             """,
             """
-            DROP FUNCTION phx_sync_snap_columns();
+            DROP FUNCTION IF EXISTS phx_sync_snap_columns();
             """
   end
 end
