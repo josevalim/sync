@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="[scrollbar-gutter:stable]">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,11 +7,12 @@
     <.live_title suffix=" · Phoenix Framework">
       <%= assigns[:page_title] || "Sync" %>
     </.live_title>
-    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
-    <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
+
+    <script :for={src <- SyncWeb.index_js_paths()} type="module" src={src}>
     </script>
+    <link :for={src <- SyncWeb.index_css_paths()} rel="stylesheet" href={src} />
   </head>
-  <body class="bg-white">
+  <body class="bg-gray-100 dark:bg-gray-900">
     <%= @inner_content %>
   </body>
 </html>

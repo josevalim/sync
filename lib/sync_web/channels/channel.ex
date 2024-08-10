@@ -5,7 +5,7 @@ defmodule SyncWeb.Channel do
   import Ecto.Query
 
   @impl true
-  def join("todo:sync", _payload, socket) do
+  def join("sync:todos", _payload, socket) do
     {:ok, assign(socket, :subscriptions, MapSet.new())}
   end
 
@@ -42,7 +42,7 @@ defmodule SyncWeb.Channel do
   @impl true
   def handle_in("sync", %{"snapmin" => client_snapmin}, socket) do
     # Subscribe before any query
-    socket = update_subscriptions("todo:items", socket)
+    socket = update_subscriptions("sync:todos:items", socket)
 
     {:ok, payload} =
       Repo.transaction(fn ->
@@ -71,7 +71,7 @@ defmodule SyncWeb.Channel do
   defp update_subscriptions(topic, socket) do
     subscriptions = socket.assigns.subscriptions
 
-    if "todo:items" in subscriptions do
+    if "sync:todos:items" in subscriptions do
       socket
     else
       # TODO: We should replace the usage of endpoint in SyncWeb.Replication

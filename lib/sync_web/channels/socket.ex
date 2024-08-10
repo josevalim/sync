@@ -8,7 +8,7 @@ defmodule SyncWeb.Socket do
 
   ## Channels
 
-  channel "todo:sync", SyncWeb.Channel
+  channel "sync:todos", SyncWeb.Channel
 
   # Socket params are passed from the client and can
   # be used to verify and authenticate a user. After
