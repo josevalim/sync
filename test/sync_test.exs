@@ -54,6 +54,19 @@ defmodule SyncTest do
       assert [] = Repo.all(Item)
       assert [%{id: ^id}] = Repo.all({"items", Item})
     end
+
+    test "disabled soft deletion" do
+      item = Repo.insert!(%Item{name: "study"})
+
+      Repo.transaction(fn ->
+        Repo.query!("ALTER TABLE items DISABLE RULE phx_sync_soft_deletion")
+        Sync.Repo.delete!(item)
+        Repo.query!("ALTER TABLE items ENABLE RULE phx_sync_soft_deletion")
+      end)
+
+      assert [] = Repo.all(Item)
+      assert [] = Repo.all({"items", Item})
+    end
   end
 
   describe "replication" do

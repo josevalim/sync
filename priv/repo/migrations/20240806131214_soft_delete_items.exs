@@ -5,12 +5,8 @@ defmodule Sync.Repo.Migrations.SoftDeleteItems do
   # We want to make this part of the `syncify` operation.
   def change do
     # TODO: We should allow users to configure which fields are pruned on soft deletion.
-    # TODO: Allow the rule to be temporarily disabled with
-    #       WHERE current_setting('phx_sync.hard_deletion', true) IS NULL or perhaps
-    #       we check if DELETED_AT was already set. For the latter, we need to ensure
-    #       no double deletions in Ecto.
-    # TODO: We need to do it in a way that automatically cascades any foreign key.
-    #       Perhaps by doing that finds all foreign keys relationships?
+    # TODO: We need to do it in a way that cascades foreign keys.
+    #       Perhaps by doing a query that finds all foreign keys relationships?
     execute """
             CREATE OR REPLACE RULE "phx_sync_soft_deletion" AS ON DELETE TO "items"
             DO INSTEAD UPDATE items SET _deleted_at = NOW() WHERE id = OLD.id RETURNING OLD.*;
