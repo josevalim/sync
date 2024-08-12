@@ -49,7 +49,7 @@ defmodule SyncTest do
 
     test "soft deletion" do
       %{id: id} = item = Repo.insert!(%Item{name: "study"})
-      {:error, _changeset} = Sync.Repo.delete(item, stale_error_field: :id)
+      Sync.Repo.delete!(item, allow_stale: true)
 
       assert [] = Repo.all(Item)
       assert [%{id: ^id}] = Repo.all({"items", Item})
@@ -58,6 +58,7 @@ defmodule SyncTest do
     test "disabled soft deletion" do
       item = Repo.insert!(%Item{name: "study"})
 
+      # TODO: Perhaps encapsulate this into a repository operation?
       Repo.transaction(fn ->
         Repo.query!("ALTER TABLE items DISABLE RULE phx_sync_soft_deletion")
         Sync.Repo.delete!(item)

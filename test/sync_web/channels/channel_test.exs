@@ -34,9 +34,7 @@ defmodule SyncWeb.ChannelChannelTest do
 
   test "sync does not fetch soft-deleted data", %{socket: socket} do
     %{id: id} = item = Sync.Repo.insert!(%Sync.Todo.Item{name: "study"})
-
-    # TODO: Make this better supported in Ecto
-    {:error, _changeset} = Sync.Repo.delete(item, stale_error_field: :id)
+    Sync.Repo.delete!(item, allow_stale: true)
 
     ref = push(socket, "sync", %{"snapmin" => "0"})
 
