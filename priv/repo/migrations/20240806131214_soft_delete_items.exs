@@ -8,8 +8,8 @@ defmodule Sync.Repo.Migrations.SoftDeleteItems do
     # TODO: We need to do it in a way that cascades foreign keys.
     #       Perhaps by doing a query that finds all foreign keys relationships?
     execute """
-            CREATE OR REPLACE RULE "phx_sync_soft_deletion" AS ON DELETE TO "items"
-            DO INSTEAD UPDATE items SET _deleted_at = NOW() WHERE id = OLD.id RETURNING OLD.*;
+            CREATE OR REPLACE RULE phx_sync_soft_deletion AS ON DELETE TO items
+            DO INSTEAD UPDATE items SET _deleted_at = NOW() WHERE id = OLD.id AND _deleted_at IS NULL RETURNING OLD.*;
             """,
             """
             DROP RULE IF EXISTS phx_sync_soft_deletion ON items;

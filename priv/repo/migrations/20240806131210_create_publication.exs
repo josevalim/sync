@@ -10,6 +10,7 @@ defmodule Sync.Repo.Migrations.CreatePublication do
     # TODO: Encapsulate this into Phoenix.Sync.Migrations.install_sync()
     # TODO: We should consider using shared advisory locks to reduce
     # the "scope" of long running transactions
+    # TODO: We may not need the _snapcur column
     execute """
             CREATE OR REPLACE FUNCTION phx_sync_snap_columns()
             RETURNS TRIGGER AS $$

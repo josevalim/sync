@@ -30,7 +30,8 @@ defmodule SyncWeb.Channel do
   # be buffered until the "commit" event has a "lsn" that matches
   # or suparpasses the returned sync "lsn". Only then we can merge
   # the sync data and all replication commits into the actual
-  # client storage. As we merge these (and future) replication
+  # client storage. This will give us snapshot isolation/transactional
+  # consistency on the client. As we merge these (and future) replication
   # events, each row has a "_snapmin" column, and we should update
   # the resource snapmin in the client if the row "_snapmin" is
   # bigger than the client one.
@@ -57,10 +58,7 @@ defmodule SyncWeb.Channel do
         # if a particular row was removed. In the future, we probably want to return
         # only the IDs and not the whole record.
         data =
-          Repo.all(
-            from s in {"items", Sync.Todo.Item},
-              where: s._snapmin >= ^client_snapmin and s._snapmin < ^server_snapmin
-          )
+          Repo.all(from s in {"items", Sync.Todo.Item}, where: s._snapmin >= ^client_snapmin)
 
         # TODO: Add LSN decoding to Postgrex as a built-in type
         %{rows: [[lsn]]} = Repo.query!("SELECT pg_current_wal_lsn()::text")
