@@ -71,6 +71,7 @@ defmodule SyncTest do
   end
 
   describe "replication" do
+    @tag :capture_log
     test "sends a message on reconnection" do
       Sync.Replication.subscribe(Sync.Replication)
       Sync.Replication.disconnect(Sync.Replication)

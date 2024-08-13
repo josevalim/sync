@@ -60,9 +60,7 @@ defmodule SyncWeb.Channel do
         data =
           Repo.all(from s in {"items", Sync.Todo.Item}, where: s._snapmin >= ^client_snapmin)
 
-        # TODO: Add LSN decoding to Postgrex as a built-in type
-        %{rows: [[lsn]]} = Repo.query!("SELECT pg_current_wal_lsn()::text")
-        {:ok, lsn} = Postgrex.ReplicationConnection.decode_lsn(lsn)
+        %{rows: [[lsn]]} = Repo.query!("SELECT pg_current_wal_lsn()")
         %{snapmin: server_snapmin, data: [["items", data]], lsn: lsn}
       end)
 
