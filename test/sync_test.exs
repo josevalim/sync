@@ -6,13 +6,12 @@ defmodule SyncTest do
   @moduletag cleanup: ["items"]
 
   describe "items" do
-    test "sets _snapmin and _snapcur on insertion" do
+    test "sets _snapmin on insertion" do
       item = Repo.insert!(%Item{name: "study"})
       assert is_integer(item._snapmin)
-      assert is_integer(item._snapcur)
     end
 
-    test "holds _snapmin and _snapcur apart on long running transactions" do
+    test "holds _snapmin apart on long running transactions" do
       parent = self()
 
       task =
@@ -20,9 +19,10 @@ defmodule SyncTest do
           Ecto.Adapters.SQL.Sandbox.checkout(Repo, sandbox: false)
 
           Repo.transaction(fn ->
-            Repo.insert!(%Item{name: "blocking"})
+            item = Repo.insert!(%Item{name: "blocking"})
             send(parent, :ready)
             assert_receive :done
+            item
           end)
         end)
 
@@ -30,21 +30,18 @@ defmodule SyncTest do
 
       item = Repo.insert!(%Item{name: "study"})
       assert is_integer(item._snapmin)
-      assert is_integer(item._snapcur)
-      assert item._snapmin < item._snapcur
 
       send(task.pid, :done)
-      assert Task.await(task)
+      {:ok, blocking_item} = Task.await(task)
+      assert item._snapmin == blocking_item._snapmin
     end
 
-    test "updates _snapmin and _snapcur on update" do
+    test "updates _snapmin on update" do
       item = Repo.insert!(%Item{name: "study"})
       assert is_integer(item._snapmin)
-      assert is_integer(item._snapcur)
 
       updated_item = Repo.update!(change(item, name: "study harder!"))
       assert item._snapmin != updated_item._snapmin
-      assert item._snapcur != updated_item._snapcur
     end
 
     test "soft deletion" do
