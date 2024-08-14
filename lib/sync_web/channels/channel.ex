@@ -36,8 +36,8 @@ defmodule SyncWeb.Channel do
   # the resource snapmin in the client if the row "_snapmin" is
   # bigger than the client one.
   #
-  # TODO: Do we want to allow multiple resources to be synced in
-  # parallel and then emit data directly to the socket?
+  # TODO: Allow multiple resources to be synced in
+  # parallel and then emit data directly to the socket
   # TODO: _snapmin and lsn can overflow on the client because JS
   # ints are actually float. We need to handle this carefully
   # in the future.
@@ -47,6 +47,9 @@ defmodule SyncWeb.Channel do
   @impl true
   def handle_in("sync", %{"snapmin" => client_snapmin}, socket) do
     # Subscribe before any query
+    # TODO: This should return the connection LSN right after the
+    # subscription. The replication can keep the current LSN in a
+    # counter, and store it in the Registry meta key.
     socket = update_subscriptions("sync:todos:items", socket)
 
     {:ok, payload} =
