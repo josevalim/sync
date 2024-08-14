@@ -4,6 +4,10 @@ function createTodosStore() {
   // TODO handle proper decoding of types on sync
   // we receive Ecto decoded types on sync, but uncasted values on replicate
   let decodeTypes = (todo) => {
+    ["inserted_at", "updated_at", "_deleted_at"].forEach(field => {
+      let dateStr = todo[field];
+      if (dateStr && !dateStr.endsWith("Z")) { dateStr = dateStr + "Z"; }
+    })
     todo.done = todo.done === "t" || todo.done === "f" ? todo.done === "t" : todo.done;
     return todo
   }

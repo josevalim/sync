@@ -84,8 +84,38 @@ defmodule SyncWeb.Channel do
   # TODO: IndexedDB is shared across tabs. It is necessary to
   # provide some mechanism to enable cross tab support.
   @impl true
-  def handle_in("write", payload, socket) do
-    {:reply, {:ok, payload}, socket}
+  def handle_in("write", %{"ops" => ops}, socket) do
+    reply =
+      Repo.transaction(fn -> Enum.reduce_while(ops, {:ok, %{}}, &handle_write/2) end)
+
+    case reply do
+      {:ok, {:ok, _}} -> {:reply, :ok, socket}
+      {:ok, {:halt, error}} -> {:reply, {:error, error}, socket}
+      # TODO handle rollback with meaningful client error
+      {:error, _rollback} -> {:reply, {:error, %{op: hd(ops), errors: []}}, socket}
+    end
+  end
+
+  defp handle_write([_op_id, "insert", "items", data] = op, acc) do
+    %{"id" => id} = data
+    case Repo.insert(Sync.Todo.Item.changeset(%Sync.Todo.Item{id: id}, data)) do
+      {:ok, _} -> {:cont, acc}
+      {:error, changeset} -> {:halt, {:error, %{op: op, errors: changeset.errors}}}
+    end
+  end
+
+  defp handle_write([_op_id, "update", "items", %{"id" => id} = data] = op, acc) do
+    todo = Repo.get!(Sync.Todo.Item, id)
+
+    case Repo.update(Sync.Todo.Item.changeset(todo, data)) do
+      {:ok, _} -> {:cont, acc}
+      {:error, changeset} -> {:halt, {:error, %{op: op, errors: changeset.errors}}}
+    end
+  end
+
+  defp handle_write([_op_id, "delete", "items", id], acc) do
+    {_, _} = Repo.delete_all(from i in Sync.Todo.Item, where: i.id == ^id)
+    {:cont, acc}
   end
 
   defp update_subscriptions(topic, socket) do

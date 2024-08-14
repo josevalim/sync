@@ -1,5 +1,12 @@
 import { Socket } from "phoenix";
+import uuidv4 from "./uuidv4";
 
+let storePromise = (req) => {
+  return new Promise((resolve, reject) => {
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
 
 export default class {
   constructor(vsn, tables, opts = {}) {
@@ -17,18 +24,17 @@ export default class {
     console.log("commit", lsn, ops)
     ops.forEach(({ op, data, schema, table }) => {
       if (op === "insert") {
-        this.insert(table, data)
+        this.insert(table, [data], { dispatch: true })
       } else if (op === "update") {
-        this.update(table, data)
+        this.update(table, [data], { dispatch: true })
       } else if (op === "delete") {
-        this.delete(table, data.id)
+        this.delete(table, data.id, { dispatch: true })
       }
     })
   }
 
   socketConnect(resolve, reject) {
     this.socket = new Socket("/socket", { params: { _csrf_token: this.csrfToken } });
-    this.channel = this.socket.channel("sync:todos");
     this.socket.onMessage(({ topic, event, payload }) => {
       if (!topic.startsWith("sync:todos:")) { return }
 
@@ -36,42 +42,49 @@ export default class {
         this.handleCommit(payload)
       }
     });
-    this.channel
-      .join()
-      .receive("ok", (resp) => {
-        this.channel.push("sync", { snapmin: 0 }).receive("ok", ({ data, lsn, snapmin }) => {
-          console.log("sync", { data, lsn, snapmin });
-          data.forEach(([table, rows]) => {
-            rows.forEach(row => this.insert(table, row));
-          });
-          this.lsn = lsn
-          this.snapmin = snapmin
-          resolve();
+    this.socket.onError(() => this.channel && this.channel.leave());
+    this.socket.onOpen(() => {
+      this.channel = this.socket.channel("sync:todos");
+      this.channel
+        .join()
+        .receive("ok", (resp) => {
+          this.channel.push("sync", { snapmin: 0 }).receive("ok", ({ data, lsn, snapmin }) => {
+            console.log("sync", { data, lsn, snapmin });
+            data.forEach(([table, rows]) => this.insert(table, rows));
+            this.lsn = lsn
+            this.snapmin = snapmin
+            this.all("transactions").then(ops => {
+              if (ops.length === 0) { return resolve(); }
+              this.write(ops).then(() => {
+                resolve();
+              }).catch(e => { console.error("Error writing transactions", e) });
+            });
+          })
+          console.log("Joined successfully", resp);
         })
-        console.log("Joined successfully", resp);
-      })
-      .receive("error", (reason) => {
-        reject(reason);
-        console.error("Unable to join", reason);
-      })
-      .receive("timeout", () => reject("timeout"));
-
+        .receive("error", (reason) => {
+          reject(reason);
+          console.error("Unable to join", reason);
+        })
+        .receive("timeout", () => reject("timeout"));
+    });
     this.socket.connect();
   }
 
   async sync() {
     return new Promise((resolve, reject) => {
-      let request = indexedDB.open("sync_data", this.vsn);
+      let req = indexedDB.open("sync_data", this.vsn);
 
-      request.onerror = (e) => reject("IndexedDB error: " + e.target.errorCode);
+      req.onerror = (e) => reject("IndexedDB error: " + e.target.errorCode);
 
-      request.onsuccess = (e) => {
+      req.onsuccess = (e) => {
         this.db = e.target.result;
         this.socketConnect(resolve, reject);
       };
 
-      request.onupgradeneeded = (e) => {
+      req.onupgradeneeded = (e) => {
         this.db = e.target.result;
+        this.db.createObjectStore("transactions", { keyPath: "id", autoIncrement: true });
         this.tables.forEach(table => {
           this.db.createObjectStore(table, { keyPath: "id" });
         })
@@ -79,54 +92,90 @@ export default class {
     });
   }
 
+  async write(ops) {
+    for (let op of ops) {
+      if (op.op === "insert") { op.data.id = op.data.id || uuidv4(); }
+    }
+    ops = await this.insert("transactions", ops, { dispatch: true })
+
+    let ackOps = (acked) => Promise.all(acked.map(op => this.delete("transactions", op.id)));
+
+    return new Promise((resolve, reject) => {
+      let chanOps = ops.sort((a, b) => a.id - b.id).map(({ id, op, table, data }) => [id, op, table, data])
+      // TODO handle timeouts
+      this.channel.push("write", { ops: chanOps })
+        .receive("ok", () => {
+          ackOps(ops).then(() => resolve())
+        })
+        .receive("error", ({ op: failedOp, errors }) => reject({ op: failedOp, errors }))
+        .receive("timeout", () => reject({ reason: "timeout" }))
+    });
+  }
+
   async all(table) {
-    return new Promise((resolve, reject) => {
-      let transaction = this.db.transaction([table], "readonly");
-      let objectStore = transaction.objectStore(table);
-      let request = objectStore.getAll();
+    try {
+      // First transaction to get transaction data
+      let trans = this.db.transaction([table, "transactions"], "readonly");
+      let transStore = trans.objectStore("transactions");
+      let tableStore = trans.objectStore(table);
+      let transactionsData = await storePromise(transStore.getAll());
+      let syncData = await storePromise(tableStore.getAll());
 
-      request.onerror = (e) => reject(`Error fetching ${table}`);
-      request.onsuccess = (e) => resolve(e.target.result);
-    });
+      let mergedData = new Map();
+
+      syncData.forEach(data => !data._deleted_at && mergedData.set(data.id, data))
+
+      transactionsData.forEach(({ op, table: transTable, data }) => {
+        if (transTable !== table) { return }
+        // TODO: client can handle the conflict resolution if needed
+        if (op === "insert" || op === "update") {
+          mergedData.set(data.id, data)
+        } else if (op === "delete") {
+          mergedData.delete(data)
+        }
+      });
+      return Array.from(mergedData.values());
+    } catch (error) {
+      throw new Error(`Error fetching data: ${error}`);
+    }
   }
 
-  async insert(table, record) {
+  async insert(table, rows, opts = {}) {
     return new Promise((resolve, reject) => {
       let transaction = this.db.transaction([table], "readwrite");
       let objectStore = transaction.objectStore(table);
-      let request = objectStore.put(record);
-
-      request.onerror = (e) => reject(`Error inserting into ${table}` + e.target.error);
-      request.onsuccess = (e) => {
-        document.dispatchEvent(new CustomEvent(`${table}:inserted`, { detail: record }));
-        resolve(e.target.result);
+      if(!objectStore.autoIncrement){
+        rows.forEach(row => row.id = row.id || uuidv4());
       }
+      Promise.all(rows.map(row => storePromise(objectStore.put(row)))).then(ids => {
+        if (opts.dispatch) { document.dispatchEvent(new CustomEvent(`${table}:inserted`, { detail: rows })); }
+        let result = rows.map((row, i) => ({ ...row, id: ids[i] }));
+        resolve(result);
+      }).catch(e => reject(`Error inserting into ${table}` + e.target.error));
     });
   }
 
-  async update(table, record) {
+  async update(table, rows, opts = {}) {
     return new Promise((resolve, reject) => {
       let transaction = this.db.transaction([table], "readwrite");
       let objectStore = transaction.objectStore(table);
-      let request = objectStore.put(record);
 
-      request.onerror = (e) => reject(`Error updating ${table}`);
-      request.onsuccess = (e) => {
-        document.dispatchEvent(new CustomEvent(`${table}:updated`, { detail: record }));
-        resolve(e.target.result);
-      }
+      Promise.all(rows.map(row => storePromise(objectStore.put(row)))).then(result => {
+        if (opts.dispatch) { document.dispatchEvent(new CustomEvent(`${table}:updated`, { detail: rows })); }
+        resolve(result);
+      }).catch(e => reject(`Error updating ${table}` + e.target.error));
     });
   }
 
-  async delete(table, id) {
+  async delete(table, id, opts = {}) {
     return new Promise((resolve, reject) => {
       let transaction = this.db.transaction([table], "readwrite");
       let objectStore = transaction.objectStore(table);
-      let request = objectStore.delete(id);
+      let req = objectStore.delete(id);
 
-      request.onerror = (e) => reject(`Error deleting form ${table} ${id}`);
-      request.onsuccess = (e) => {
-        document.dispatchEvent(new CustomEvent(`${table}:deleted`, { detail: e.target.result }));
+      req.onerror = (e) => reject(`Error deleting form ${table} ${id}`);
+      req.onsuccess = (e) => {
+        if (opts.dispsatch) { document.dispatchEvent(new CustomEvent(`${table}:deleted`, { detail: e.target.result })); }
         resolve(e.target.result);
       }
     });

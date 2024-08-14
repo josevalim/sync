@@ -2,11 +2,11 @@
   import { onMount } from "svelte";
   import SyncDB from "./lib/sync_db";
   import { todos } from "./lib/todos_store";
-  import uuidv4 from "./lib/uuidv4";
   import { applyDarkMode, enableDarkMode, disableDarkMode } from "./lib/utils";
 
   $: sortedTodos = [...$todos.items].sort((a, b) => {
-    return new Date(a.inserted_at) - new Date(b.inserted_at);
+    let diff = new Date(a.inserted_at).getTime() - new Date(b.inserted_at).getTime();
+    return diff;
   });
 
   let newTodo = "";
@@ -17,13 +17,19 @@
 
   let db = new SyncDB(1, ["items"], { csrfToken });
 
-  document.addEventListener("items:inserted", ({ detail }) => {
-    todos.add(detail);
+  document.addEventListener("items:inserted", ({ detail: items }) => {
+    items.forEach((item) => todos.add(item));
   });
-  document.addEventListener("items:updated", ({ detail }) => {
-    todos.update(detail.id, () => detail);
+  document.addEventListener("items:updated", ({ detail: items }) => {
+    items.forEach((item) => {
+      if (item._deleted_at) {
+        todos.delete(item.id);
+      } else {
+        todos.update(item.id, () => item);
+      }
+    });
   });
-  document.addEventListener("items:updated", ({ detail }) => {
+  document.addEventListener("items:deleted", ({ detail }) => {
     todos.delete(detail);
   });
 
@@ -35,16 +41,16 @@
 
   let addTodo = async () => {
     if (newTodo.trim() !== "") {
-      let now = new Date()
+      let now = new Date();
       let todo = {
-        id: uuidv4(),
         name: newTodo,
         done: false,
-        inserted_at: now.toISOString()
+        inserted_at: now.toISOString(),
+        updated_at: now.toISOString(),
       };
-      await db.insert("items", todo);
       todos.add(todo);
       newTodo = "";
+      db.write([{ op: "insert", table: "items", data: todo }]);
     }
   };
 
@@ -57,12 +63,12 @@
     let updatedTodo = todos.update(id, (todo) => {
       return { ...todo, done: !todo.done };
     });
-    await db.update("items", updatedTodo);
+    await db.write([{ op: "update", table: "items", data: updatedTodo }]);
   };
 
   let deleteTodo = async (id) => {
     todos.delete(id);
-    await db.delete("items", id);
+    await db.write([{ op: "delete", table: "items", data: id }]);
   };
 
   let toggleDarkMode = () => {
