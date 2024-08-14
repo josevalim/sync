@@ -96,6 +96,11 @@ defmodule SyncWeb.Channel do
   #
   # TODO: IndexedDB is shared across tabs. It is necessary to
   # provide some mechanism to enable cross tab support.
+  #
+  # TODO: Writes do not need to happen on the channel. It could
+  # happen over HTTP and it could have benefits too: writes need
+  # to go somewhere close to the primary, channels can be on the
+  # edge, close to replicas.
   @impl true
   def handle_in("write", %{"ops" => ops}, socket) do
     reply =
