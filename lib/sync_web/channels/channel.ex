@@ -60,6 +60,8 @@ defmodule SyncWeb.Channel do
         # TODO: This also returns deleted data, because we need to tell the client
         # if a particular row was removed. In the future, we probably want to return
         # only the IDs and not the whole record.
+        # TODO: There is no need to return deleted data if this is the first query
+        # (perhaps we allow the snapmin to not be given).
         data =
           Repo.all(from s in {"items", Sync.Todo.Item}, where: s._snapmin >= ^client_snapmin)
 
