@@ -45,7 +45,7 @@ defmodule SyncWeb.Channel do
   # have the client parse it, mirroring whatever happens
   # in the replication layer.
   @impl true
-  def handle_in("sync", %{"snapmin" => client_snapmin}, socket) do
+  def handle_in("sync", payload, socket) do
     # Subscribe before any query
     # TODO: This should return the connection LSN right after the
     # subscription. The replication can keep the current LSN in a
@@ -57,14 +57,17 @@ defmodule SyncWeb.Channel do
         %{rows: [[server_snapmin]]} =
           Repo.query!("SELECT pg_snapshot_xmin(pg_current_snapshot())")
 
-        # TODO: This also returns deleted data, because we need to tell the client
-        # if a particular row was removed. In the future, we probably want to return
-        # only the IDs and not the whole record.
-        # TODO: There is no need to return deleted data if this is the first query
-        # (perhaps we allow the snapmin to not be given).
-        data =
-          Repo.all(from s in {"items", Sync.Todo.Item}, where: s._snapmin >= ^client_snapmin)
+        query =
+          if client_snapmin = Map.get(payload, "snapmin") do
+            # TODO: This also returns deleted data, because we need to tell the client
+            # if a particular row was removed. In the future, we probably want to return
+            # only the IDs and not the whole record.
+            from s in {"items", Sync.Todo.Item}, where: s._snapmin >= ^client_snapmin
+          else
+            from s in {"items", Sync.Todo.Item}, where: is_nil(s._deleted_at)
+          end
 
+        data = Repo.all(query)
         %{rows: [[lsn]]} = Repo.query!("SELECT pg_current_wal_lsn()")
         %{snapmin: server_snapmin, data: [["items", data]], lsn: lsn}
       end)
