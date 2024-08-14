@@ -6,6 +6,7 @@
 
   $: sortedTodos = [...$todos.items].sort((a, b) => {
     let diff = new Date(a.inserted_at).getTime() - new Date(b.inserted_at).getTime();
+    console.log(a.name, a.inserted_at, b.name, b.inserted_at, diff);
     return diff;
   });
 
@@ -34,9 +35,11 @@
   });
 
   onMount(async () => {
-    await db.sync();
-    let items = await db.all("items");
-    items.forEach((item) => todos.add(item));
+    await db.sync(() => {
+      db.all("items").then(items => {
+        items.forEach((item) => todos.add(item));
+      });
+    });
   });
 
   let addTodo = async () => {

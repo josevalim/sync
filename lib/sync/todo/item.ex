@@ -28,7 +28,7 @@ defmodule Sync.Todo.Item do
     field :_snapmin, :integer, read_after_writes: true
     field :_snapcur, :integer, read_after_writes: true
 
-    timestamps(type: :utc_datetime)
+    timestamps(type: :utc_datetime_usec)
   end
 
   @doc false

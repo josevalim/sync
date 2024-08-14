@@ -13,7 +13,7 @@ defmodule Sync.Repo.Migrations.CreateItems do
       add :_snapmin, :integer, null: false
       add :_snapcur, :integer, null: false
 
-      timestamps(type: :utc_datetime)
+      timestamps(type: :utc_datetime_usec)
     end
 
     execute """

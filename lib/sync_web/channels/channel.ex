@@ -100,6 +100,7 @@ defmodule SyncWeb.Channel do
 
   defp handle_write([_op_id, "insert", "items", data] = op, acc) do
     %{"id" => id} = data
+
     case Repo.insert(Sync.Todo.Item.changeset(%Sync.Todo.Item{id: id}, data)) do
       {:ok, _} -> {:cont, acc}
       {:error, changeset} -> {:halt, {:error, %{op: op, errors: changeset.errors}}}
@@ -107,11 +108,16 @@ defmodule SyncWeb.Channel do
   end
 
   defp handle_write([_op_id, "update", "items", %{"id" => id} = data] = op, acc) do
-    todo = Repo.get!(Sync.Todo.Item, id)
+    # TODO conflict resolution – someone raced out update with a delete,
+    case Repo.get(Sync.Todo.Item, id) do
+      nil ->
+        {:cont, acc}
 
-    case Repo.update(Sync.Todo.Item.changeset(todo, data)) do
-      {:ok, _} -> {:cont, acc}
-      {:error, changeset} -> {:halt, {:error, %{op: op, errors: changeset.errors}}}
+      %Sync.Todo.Item{} = todo ->
+        case Repo.update(Sync.Todo.Item.changeset(todo, data)) do
+          {:ok, _} -> {:cont, acc}
+          {:error, changeset} -> {:halt, {:error, %{op: op, errors: changeset.errors}}}
+        end
     end
   end
 

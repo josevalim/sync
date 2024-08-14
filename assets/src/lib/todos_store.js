@@ -7,6 +7,10 @@ function createTodosStore() {
     ["inserted_at", "updated_at", "_deleted_at"].forEach(field => {
       let dateStr = todo[field];
       if (dateStr && !dateStr.endsWith("Z")) { dateStr = dateStr + "Z"; }
+      if (dateStr && dateStr.indexOf('T') === -1) {
+        dateStr = dateStr.replace(" ", "T");
+      }
+      if (dateStr) { todo[field] = dateStr }
     })
     todo.done = todo.done === "t" || todo.done === "f" ? todo.done === "t" : todo.done;
     return todo

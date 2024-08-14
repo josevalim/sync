@@ -20,58 +20,8 @@ export default class {
     this.snapmin = 0
   }
 
-  handleCommit({ lsn, ops }) {
-    console.log("commit", lsn, ops)
-    ops.forEach(({ op, data, schema, table }) => {
-      if (op === "insert") {
-        this.insert(table, [data], { dispatch: true })
-      } else if (op === "update") {
-        this.update(table, [data], { dispatch: true })
-      } else if (op === "delete") {
-        this.delete(table, data.id, { dispatch: true })
-      }
-    })
-  }
-
-  socketConnect(resolve, reject) {
-    this.socket = new Socket("/socket", { params: { _csrf_token: this.csrfToken } });
-    this.socket.onMessage(({ topic, event, payload }) => {
-      if (!topic.startsWith("sync:todos:")) { return }
-
-      if (event === "commit") {
-        this.handleCommit(payload)
-      }
-    });
-    this.socket.onError(() => this.channel && this.channel.leave());
-    this.socket.onOpen(() => {
-      this.channel = this.socket.channel("sync:todos");
-      this.channel
-        .join()
-        .receive("ok", (resp) => {
-          this.channel.push("sync", { snapmin: 0 }).receive("ok", ({ data, lsn, snapmin }) => {
-            console.log("sync", { data, lsn, snapmin });
-            data.forEach(([table, rows]) => this.insert(table, rows));
-            this.lsn = lsn
-            this.snapmin = snapmin
-            this.all("transactions").then(ops => {
-              if (ops.length === 0) { return resolve(); }
-              this.write(ops).then(() => {
-                resolve();
-              }).catch(e => { console.error("Error writing transactions", e) });
-            });
-          })
-          console.log("Joined successfully", resp);
-        })
-        .receive("error", (reason) => {
-          reject(reason);
-          console.error("Unable to join", reason);
-        })
-        .receive("timeout", () => reject("timeout"));
-    });
-    this.socket.connect();
-  }
-
-  async sync() {
+  // public
+  async sync(callback) {
     return new Promise((resolve, reject) => {
       let req = indexedDB.open("sync_data", this.vsn);
 
@@ -79,7 +29,10 @@ export default class {
 
       req.onsuccess = (e) => {
         this.db = e.target.result;
-        this.socketConnect(resolve, reject);
+        this.socketConnect(() => {
+          callback()
+          resolve()
+        }, reject);
       };
 
       req.onupgradeneeded = (e) => {
@@ -140,11 +93,72 @@ export default class {
     }
   }
 
+  // private
+
+  handleCommit({ lsn, ops }) {
+    console.log("commit", lsn, ops)
+    ops.forEach(({ op, data, schema, table }) => {
+      if (op === "insert") {
+        this.insert(table, [data], { dispatch: true })
+      } else if (op === "update") {
+        this.update(table, [data], { dispatch: true })
+      } else if (op === "delete") {
+        this.delete(table, data.id, { dispatch: true })
+      }
+    })
+  }
+
+  resync(resolve) {
+    this.channel.push("sync", { snapmin: 0 }).receive("ok", ({ data, lsn, snapmin }) => {
+      console.log("sync", { data, lsn, snapmin });
+      data.forEach(([table, rows]) => this.insert(table, rows));
+      this.lsn = lsn
+      this.snapmin = snapmin
+      this.all("transactions").then(ops => {
+        if (ops.length === 0) { return resolve(); }
+        this.write(ops).then(() => {
+          resolve();
+        }).catch(e => { console.error("Error writing transactions", e) });
+      });
+    })
+  }
+  socketConnect(resolve, reject) {
+    this.socket = new Socket("/socket", { params: { _csrf_token: this.csrfToken } });
+    this.socket.onMessage(({ topic, event, payload }) => {
+      if (!topic.startsWith("sync:todos:")) { return }
+
+      if (event === "commit") {
+        this.handleCommit(payload)
+      }
+    });
+    // when we get disconnected, we leave the channel to avoid pushing stale
+    // transactions from the push buffer
+    this.socket.onError(() => this.channel && this.channel.leave());
+    this.socket.onOpen(() => {
+      this.channel = this.socket.channel("sync:todos");
+      this.channel
+        .join()
+        .receive("ok", (resp) => {
+          console.log("Joined successfully", resp);
+          this.resync(resolve);
+        })
+        .receive("error", (reason) => {
+          reject(reason);
+          console.error("Unable to join", reason);
+        })
+        .receive("timeout", () => reject("timeout"));
+
+      this.channel.on("resync", () => this.resync(resolve))
+    });
+    this.socket.connect();
+  }
+
+
   async insert(table, rows, opts = {}) {
     return new Promise((resolve, reject) => {
       let transaction = this.db.transaction([table], "readwrite");
       let objectStore = transaction.objectStore(table);
-      if(!objectStore.autoIncrement){
+      if (!objectStore.autoIncrement) {
         rows.forEach(row => row.id = row.id || uuidv4());
       }
       Promise.all(rows.map(row => storePromise(objectStore.put(row)))).then(ids => {
