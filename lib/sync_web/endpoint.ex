@@ -25,9 +25,8 @@ defmodule SyncWeb.Endpoint do
   # when deploying your static files in production.
   plug Plug.Static,
     at: "/",
-    from: :sync,
-    gzip: false,
-    only: SyncWeb.static_paths()
+    from: {:sync, "priv/static/assets"},
+    gzip: false
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
