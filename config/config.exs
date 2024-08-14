@@ -22,6 +22,17 @@ config :sync, SyncWeb.Endpoint,
   pubsub_server: Sync.PubSub,
   live_view: [signing_salt: "5gW26Rag"]
 
+config :tailwind,
+  version: "3.4.10",
+  sync: [
+    args: ~w(
+      --config=tailwind.config.js
+      --input=src/app.css
+      --output=../priv/static/assets/app.css
+    ),
+    cd: Path.expand("../assets", __DIR__)
+  ]
+
 # Configures the mailer
 #
 # By default it uses the "Local" adapter which stores the emails
