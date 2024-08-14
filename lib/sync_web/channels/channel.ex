@@ -4,12 +4,20 @@ defmodule SyncWeb.Channel do
   alias Sync.Repo
   import Ecto.Query
 
-  # TODO: Implement {Sync.Replication, %{message: :connect}}
-  # event by asking the client to synchronize again.
-
   @impl true
   def join("sync:todos", _payload, socket) do
+    Sync.Replication.subscribe(Sync.Replication)
     {:ok, assign(socket, :subscriptions, MapSet.new())}
+  end
+
+  # This message is received when we lose connection to PostgreSQL,
+  # which means we may have missed replication events. Right now,
+  # this will force a resync but in the future we should just rather
+  # mark all colletions as stale, so they are force synced as they
+  # are used on the client.
+  @impl true
+  def handle_info({Sync.Replication, %{message: :connect}}, socket) do
+    {:noreply, push(socket, "resync", %{})}
   end
 
   # The sync happens per table/view. This proof of concept

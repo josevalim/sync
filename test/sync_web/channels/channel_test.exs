@@ -55,4 +55,10 @@ defmodule SyncWeb.ChannelChannelTest do
     assert_reply ref, :ok, %{data: [["items", []]], lsn: lsn, snapmin: snapmin}
     assert is_integer(lsn) and is_integer(snapmin)
   end
+
+  @tag :capture_log
+  test "asks to resync on database disconnection" do
+    Sync.Replication.disconnect(Sync.Replication)
+    assert_push "resync", %{}
+  end
 end
