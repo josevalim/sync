@@ -25,7 +25,8 @@ config :sync, SyncWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "a5jo0VhHRb/Nr+1C0cGVv94L0vqo+Zz6Nq9z4BvFfiiKhZJKVjNyR8u2GYU/nmfB",
   watchers: [
-    npm: ["run", "watch", cd: "assets"]
+    node: ["esbuild.cjs", "--watch", cd: "assets"],
+    tailwind: {Tailwind, :install_and_run, [:sync, ~w(--watch)]}
   ]
 
 # ## SSL Support
