@@ -13,11 +13,12 @@ export default class {
     this.vsn = vsn;
     this.tables = tables;
     this.csrfToken = opts.csrfToken;
-    this.db = null
-    this.socket = null
-    this.channel = null
-    this.lsn = 0
-    this.snapmin = 0
+    this.db = null;
+    this.socket = null;
+    this.channel = null;
+    this.joinCount = 0;
+    this.lsn = 0;
+    this.snapmin = 0;
   }
 
   // public
@@ -109,7 +110,9 @@ export default class {
   }
 
   resync(resolve) {
-    this.channel.push("sync", { snapmin: 0 }).receive("ok", ({ data, lsn, snapmin }) => {
+    // we don't sent snapmin if we are the first join to avoid getting stale deletes
+    let info = this.joinCount === 1 ? {} : { snapmin: 0 }
+    this.channel.push("sync", info).receive("ok", ({ data, lsn, snapmin }) => {
       console.log("sync", { data, lsn, snapmin });
       data.forEach(([table, rows]) => this.insert(table, rows));
       this.lsn = lsn
@@ -139,6 +142,7 @@ export default class {
       this.channel
         .join()
         .receive("ok", (resp) => {
+          this.joinCount++;
           console.log("Joined successfully", resp);
           this.resync(resolve);
         })
