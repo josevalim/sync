@@ -4,8 +4,6 @@
 
 This document outlines an implementation of implementing live queries and synchronization on top of Phoenix Channels and PostgreSQL.
 
-First, let's define those terms.
-
 The idea behind implementing "live queries" is that a client can request "select * from tasks where org_id = 42" and they will receive both the current tasks but subscribe to any future insert, update, or deletion of these tasks.
 
 One way to implement such tasks is via direct table polling. However, if we have several queries and several users, polling can quickly become expensive. Furthermore, [PostgreSQL does not guarantee rows become available in the same order as primary keys/sequences](https://event-driven.io/en/ordering_in_postgres_outbox/), which is a big challenge that we reference to throughout this document.
