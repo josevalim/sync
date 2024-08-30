@@ -2,9 +2,9 @@
 
 A proof of concept of an Elixir/Phoenix node that runs PostgreSQL Replication to automatically synchronize data to clients, showcased at my ElixirConf US 2024 keynote.
 
-Beware: messy code ahead! You will find plenty of TODOs, missing abstractions, and non-optimal decisions. Our goal is only to show how to use channels, transaction snapshots, and PostgreSQL replication to synchronize data with the front-end in a way that preserves transactional consistency. See `priv/repo/migrations` for the required SQL instructions and `lib/sync/replication.ex` for the replication logic.
+**Beware: messy code ahead!** You will find plenty of TODOs, missing abstractions, and non-optimal decisions. Our goal is only to show how to use channels, transaction snapshots, and PostgreSQL replication to synchronize data with the front-end in a way that preserves transactional consistency. See `priv/repo/migrations` for the required SQL instructions and `lib/sync/replication.ex` for the replication logic.
 
-See the [Design.md](DESIGN.md) document for an extensive discussion on the design, possible optimizations, and future work.
+See the [Design.md](DESIGN.md) document for an extensive discussion on the design, possible optimizations, and trade-offs one might consider when implementing this.
 
 ## Setup
 
